@@ -132,6 +132,40 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query
             }
         }
 
+        [Fact]
+        public void Exists_with_literal()
+        {
+            using (var ctx = Fixture.CreateContext())
+            {
+                var x = ctx.SomeEntities.Single(e => Array.Exists(e.SomeArray, i => i == 3));
+                Assert.Equal(new[] { 3, 4 }, x.SomeArray);
+                AssertContainsInSql(@"WHERE 3 = ANY (e.""SomeArray"")");
+            }
+        }
+
+        [Fact]
+        public void Exists_with_parameter()
+        {
+            using (var ctx = Fixture.CreateContext())
+            {
+                var p = 3;
+                var x = ctx.SomeEntities.Single(e => Array.Exists(e.SomeArray, i => i == p));
+                Assert.Equal(new[] { 3, 4 }, x.SomeArray);
+                AssertContainsInSql(@"WHERE @__p_0 = ANY (e.""SomeArray"")");
+            }
+        }
+
+        [Fact]
+        public void Exists_with_column()
+        {
+            using (var ctx = Fixture.CreateContext())
+            {
+                var x = ctx.SomeEntities.Single(e => Array.Exists(e.SomeArray, i => i == e.Id + 1));
+                Assert.Equal(new[] { 3, 4 }, x.SomeArray);
+                AssertContainsInSql(@"WHERE e.""Id"" + 2 = ANY (e.""SomeArray"")");
+            }
+        }
+
         #endregion
 
         #region Length
