@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using JetBrains.Annotations;
@@ -93,6 +94,28 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionVisitors
             }
 
             return base.VisitBinary(expression);
+        }
+
+        /// <inheritdoc />
+        protected override Expression VisitMethodCall(MethodCallExpression methodCallExpression)
+        {
+            if (methodCallExpression.Arguments.Count == 2 &&
+                methodCallExpression.Method.Name == nameof(Array.Exists) &&
+                methodCallExpression.Method.DeclaringType == typeof(Array) &&
+                methodCallExpression.Method.IsGenericMethod)
+            {
+                var genericTypeParameters = methodCallExpression.Method.GetGenericArguments();
+                if (genericTypeParameters.Length == 1 &&
+                    methodCallExpression.Arguments[0] is MemberExpression memberExpression &&
+                    methodCallExpression.Arguments[1] is LambdaExpression predicateExpression)
+                {
+                    var from = Visit(memberExpression);
+
+                    return new ArrayAnyAllExpression(ArrayComparisonType.ANY, "=", predicateExpression, from);
+                }
+            }
+
+            return base.VisitMethodCall(methodCallExpression);
         }
 
         /// <summary>
